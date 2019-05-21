@@ -1,0 +1,38 @@
+---
+- name: Backup Nomad Jobs
+  hosts: all
+  vars:
+    # ACL Token for Nomad
+    nomad_token: ""
+    nomad_url: ""
+    # Environment Variables to pass to AWS CLI
+    # See https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+    aws_environment: {}
+    # Name of S3 bucket
+    s3_bucket: ""
+    # Object name prefix
+    s3_prefix: ""
+  tasks:
+    - name: Get temporary file for output
+      tempfile:
+        state: directory
+      register: json_temp
+    - name: Get List of all jobs
+      uri:
+        body_format: "json"
+        headers:
+          X-Nomad-Token: "{{ nomad_token }}"
+        return_content: yes
+        url: "{{ nomad_url }}/v1/jobs"
+      register: jobs
+    - name: Query Jobs and append to list
+      include_tasks: job_detail.yml
+      vars:
+        name: "{{ item }}"
+        file: "{{ json_temp.path }}/all.json"
+      with_items: "{{ jobs.json | json_query('[*].ID') }}"
+    - name: Convert into array with JQ
+      shell: "jq --slurp -e '.' {{ json_temp.path }}/all.json > {{ json_temp.path }}/upload.json"
+    - name: Copy to S3
+      shell: aws s3 cp "{{ json_temp.path }}/upload.json" "s3://{{ s3_bucket }}/{{ s3_prefix }}{{ ansible_date_time.iso8601 }}.json" --sse
+      environment: "{{ aws_environment }}"
