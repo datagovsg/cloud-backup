@@ -5,7 +5,6 @@ steps:
   main_clone:
     title: Clone main repository
     type: git-clone
-    stage: clone
     repo: ${{CF_REPO_OWNER}}/${{CF_REPO_NAME}}
     revision: ${{CF_REVISION}}
 
