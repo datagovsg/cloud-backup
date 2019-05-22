@@ -1,0 +1,20 @@
+---
+# variables: name, file
+- name: "Query API for job {{ name }}"
+  uri:
+    body_format: "json"
+    headers:
+      X-Nomad-Token: "{{ nomad_token }}"
+    return_content: yes
+    url: "{{ nomad_url }}/v1/job/{{ name }}"
+  register: job
+- name: Get temporary file
+  tempfile:
+    state: file
+  register: tempjob
+- name: Write to tempjob file
+  copy:
+    content: "{{ job.json }}"
+    dest: "{{ tempjob.path }}"
+- name: Concatenate file
+  shell: "cat {{ tempjob.path }} >> {{ file }}"

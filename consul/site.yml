@@ -1,0 +1,25 @@
+---
+- name: Backup Consul Snapshot
+  hosts: all
+  vars:
+    # Environment variables to pass to Consul CLI
+    # See https://www.consul.io/docs/commands/index.html#environment-variables
+    consul_environment: {}
+    # Environment Variables to pass to AWS CLI
+    # See https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+    aws_environment: {}
+    # Name of S3 bucket
+    s3_bucket: ""
+    # Object name prefix
+    s3_prefix: ""
+  tasks:
+    - name: Get temporary file to save S3
+      tempfile:
+        state: file
+      register: snapshot_temp
+    - name: Download Consul Snapshot
+      shell: "consul snapshot save {{ snapshot_temp.path }}"
+      environment: "{{ consul_environment }}"
+    - name: Copy to S3
+      shell: aws s3 cp "{{ snapshot_temp.path }}" "s3://{{ s3_bucket }}/{{ s3_prefix }}{{ ansible_date_time.iso8601 }}" --sse
+      environment: "{{ aws_environment }}"
